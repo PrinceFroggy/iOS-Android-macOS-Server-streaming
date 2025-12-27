@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><title>Simulator Stream</title></head>
+<body>
+<video id="video" autoplay playsinline controls></video>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+const video = document.getElementById("video");
+const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+pc.ontrack = event => video.srcObject = event.streams[0];
+socket.on("message", async msg => {
+  if (msg.offer) {
+    await pc.setRemoteDescription(new RTCSessionDescription(msg.offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit("message", { answer });
+  } else if (msg.iceCandidate) {
+    pc.addIceCandidate(msg.iceCandidate);
+  }
+});
+pc.onicecandidate = event => {
+  if (event.candidate) {
+    socket.emit("message", { iceCandidate: event.candidate });
+  }
+};
+</script>
+</body>
+</html>
